@@ -1,3 +1,4 @@
+package org.unibl.etf.nba.persistence.dbutility.mysql;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
