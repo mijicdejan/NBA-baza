@@ -1,6 +1,7 @@
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.util.ArrayList;
 
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -11,6 +12,10 @@ import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+
+import org.unibl.etf.nba.persistence.model.dao.DAOFactory;
+import org.unibl.etf.nba.persistence.model.dao.MySQLDAOFactory;
+import org.unibl.etf.nba.persistence.model.dao.SeasonDAO;
 
 @SuppressWarnings("serial")
 public class MainForm extends JFrame {
@@ -69,6 +74,14 @@ public class MainForm extends JFrame {
 		seasonCB.setFont(new Font("Century Gothic", Font.PLAIN, 18));
 		seasonCB.setBackground(Color.WHITE);
 		contentPane.add(seasonCB);
+		
+		DAOFactory factory = new MySQLDAOFactory();
+		SeasonDAO seasonDAO = factory.getSeasonDAO();
+		ArrayList<String> seasons = seasonDAO.getAllSeasons();
+		
+		for(int i = 0; i < seasons.size(); i++) {
+			seasonCB.addItem(seasons.get(i));
+		}
 		
 		dateLbl = new JLabel("Date: ");
 		dateLbl.setBounds(10, 70, 200, 25);

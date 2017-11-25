@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 
 import org.unibl.etf.nba.persistence.dbutility.mysql.DBUtility;
 
@@ -64,7 +67,7 @@ public class MySQLSeasonDAO implements SeasonDAO {
 	}
 	
 	public boolean addCompleteSeason(Date start, Date end, int mvp, int dp, int smoty, int roty, int mip, int nog, Date playoffStart, Date playoffEnd) {
-boolean retVal = false;
+		boolean retVal = false;
 		
 		String query = "INSERT INTO season VALUE (null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		
@@ -134,6 +137,44 @@ boolean retVal = false;
 
 			if (rs.next()) {
 				retVal = rs.getInt(1);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public ArrayList<String> getAllSeasons() {
+		ArrayList<String> retVal = new ArrayList<>();
+		
+		String query = "SELECT StartDate, EndDate FROM season";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+
+		try {
+
+			conn = DBUtility.open();
+			ps = conn.prepareStatement(query);
+			rs = ps.executeQuery();
+			
+			Calendar calendar = new GregorianCalendar();
+			
+
+			while(rs.next()) {
+				String s = null;
+				calendar.setTime(rs.getDate(1));
+				s = String.valueOf(calendar.get(Calendar.YEAR));
+				s += "/";
+				calendar.setTime(rs.getDate(2));
+				s += String.valueOf(calendar.get(Calendar.YEAR));
+				retVal.add(s);
 			}
 
 		} catch (SQLException e) {
