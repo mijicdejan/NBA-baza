@@ -1,6 +1,8 @@
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
@@ -60,6 +62,32 @@ public class AddPlayerForm extends JFrame {
 	 * Create the frame.
 	 */
 	public AddPlayerForm() {
+		
+		addWindowListener(new WindowListener() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				MainFormController.resetAddPlayerFormOpened();
+			}
+
+			@Override
+			public void windowOpened(WindowEvent e) {}
+
+			@Override
+			public void windowClosing(WindowEvent e) {}
+
+			@Override
+			public void windowIconified(WindowEvent e) {}
+
+			@Override
+			public void windowDeiconified(WindowEvent e) {}
+
+			@Override
+			public void windowActivated(WindowEvent e) {}
+
+			@Override
+			public void windowDeactivated(WindowEvent e) {}
+		});
+		
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(100, 50, 330, 520);
 		setBackground(new Color(255, 255, 255));
@@ -150,6 +178,7 @@ public class AddPlayerForm extends JFrame {
 		birthplaceCB.setFont(new Font("Century Gothic", Font.PLAIN, 18));
 		contentPane.add(birthplaceCB);
 		
+		birthplaceCB.addItem("");
 		for(CityDTO city : cities) {
 			birthplaceCB.addItem(city.toString());
 		}

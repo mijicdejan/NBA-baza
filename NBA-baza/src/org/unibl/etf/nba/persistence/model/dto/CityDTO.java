@@ -56,6 +56,9 @@ public class CityDTO {
 
 	@Override
 	public String toString() {
+		if(state == null) {
+			return name + ", " + country;
+		}
 		return name + ", " + state + ", " + country;
 	}
 

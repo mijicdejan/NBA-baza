@@ -467,8 +467,7 @@ public class MainForm extends JFrame {
 		addPlayerBtn.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				AddPlayerForm apf = new AddPlayerForm();
-				apf.setVisible(true);
+				MainFormController.createAddPlayerForm();
 			}
 		});
 		
