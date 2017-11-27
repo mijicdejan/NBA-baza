@@ -7,4 +7,14 @@ public class MySQLDAOFactory implements DAOFactory {
 		return new MySQLSeasonDAO();
 	}
 
+	@Override
+	public PlayerDAO getPlayerDAO() {
+		return new MySQLPlayerDAO();
+	}
+
+	@Override
+	public CityDAO getCityDAO() {
+		return new MySQLCityDAO();
+	}
+
 }

@@ -4,19 +4,17 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
 
 import org.unibl.etf.nba.persistence.dbutility.mysql.DBUtility;
-import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
+import org.unibl.etf.nba.persistence.model.dto.PlayerDTO;
 
-public class MySQLSeasonDAO implements SeasonDAO {
+public class MySQLPlayerDAO implements PlayerDAO {
 
 	@Override
-	public boolean addSeason(Date start, Date end, int n, Date playoffStart) {
+	public boolean addPlayerWithPosition(PlayerDTO player) {
 		boolean retVal = false;
 		
-		String query = "INSERT INTO season VALUE (null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		String query = "CALL addPlayerWithPosition(?, ?, ?, ?, ?, ?)";
 		
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -27,16 +25,12 @@ public class MySQLSeasonDAO implements SeasonDAO {
 			conn.setAutoCommit(false);
 			ps = conn.prepareStatement(query);
 			
-			ps.setDate(1, new java.sql.Date(start.getTime()));
-			ps.setDate(2, new java.sql.Date(end.getTime()));
-			ps.setNull(3, java.sql.Types.INTEGER);
-			ps.setNull(4, java.sql.Types.INTEGER);
-			ps.setNull(5, java.sql.Types.INTEGER);
-			ps.setNull(6, java.sql.Types.INTEGER);
-			ps.setNull(7, java.sql.Types.INTEGER);
-			ps.setInt(8, n);
-			ps.setDate(9, new java.sql.Date(playoffStart.getTime()));
-			ps.setNull(10, java.sql.Types.DATE);
+			ps.setString(1, player.getFirstName());
+			ps.setString(2, player.getLastName());
+			ps.setDate(3, new java.sql.Date(player.getBirthdate().getTime()));
+			ps.setInt(4, player.getHeight());
+			ps.setInt(5, player.getWeight());
+			ps.setString(6, player.getPositions().get(0));
 			
 			retVal = ps.executeUpdate() == 1;
 			
@@ -65,10 +59,10 @@ public class MySQLSeasonDAO implements SeasonDAO {
 		return retVal;
 	}
 	
-	public boolean addCompleteSeason(Date start, Date end, int mvp, int dp, int smoty, int roty, int mip, int nog, Date playoffStart, Date playoffEnd) {
+	public boolean addPlayerWithPositions(PlayerDTO player) {
 		boolean retVal = false;
 		
-		String query = "INSERT INTO season VALUE (null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		String query = "CALL addPlayerWithPositions(?, ?, ?, ?, ?, ?, ?)";
 		
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -79,16 +73,13 @@ public class MySQLSeasonDAO implements SeasonDAO {
 			conn.setAutoCommit(false);
 			ps = conn.prepareStatement(query);
 			
-			ps.setDate(1, new java.sql.Date(start.getTime()));
-			ps.setDate(2, new java.sql.Date(end.getTime()));
-			ps.setInt(3, mvp);
-			ps.setInt(4, dp);
-			ps.setInt(5, smoty);
-			ps.setInt(6, roty);
-			ps.setInt(7, mip);
-			ps.setInt(8, nog);
-			ps.setDate(9, new java.sql.Date(playoffStart.getTime()));
-			ps.setDate(10, new java.sql.Date(playoffEnd.getTime()));
+			ps.setString(1, player.getFirstName());
+			ps.setString(2, player.getLastName());
+			ps.setDate(3, new java.sql.Date(player.getBirthdate().getTime()));
+			ps.setInt(4, player.getHeight());
+			ps.setInt(5, player.getWeight());
+			ps.setString(6, player.getPositions().get(0));
+			ps.setString(7, player.getPositions().get(1));
 			
 			retVal = ps.executeUpdate() == 1;
 			
@@ -118,11 +109,10 @@ public class MySQLSeasonDAO implements SeasonDAO {
 	}
 
 	@Override
-	public int getSeasonId(int seasonStart) {
+	public int getPlayerId(String firstName, String lastName) {
 		int retVal = 0;
 		
-		String query = "SELECT SeasonId FROM season WHERE YEAR(StartDate) = ?";
-		
+		String query = "SELECT PlayerId FROM player WHERE FirstName = ? AND LastName = ?";
 		Connection conn = null;
 		PreparedStatement ps = null;
 		ResultSet rs = null;
@@ -131,7 +121,8 @@ public class MySQLSeasonDAO implements SeasonDAO {
 
 			conn = DBUtility.open();
 			ps = conn.prepareStatement(query);
-			ps.setInt(1, seasonStart);
+			ps.setString(1, firstName);
+			ps.setString(2, lastName);
 			rs = ps.executeQuery();
 
 			if (rs.next()) {
@@ -148,10 +139,10 @@ public class MySQLSeasonDAO implements SeasonDAO {
 	}
 
 	@Override
-	public ArrayList<SeasonDTO> getAllSeasons() {
-		ArrayList<SeasonDTO> retVal = new ArrayList<>();
+	public PlayerDTO getPlayer(int playerId) {
+		PlayerDTO retVal = null;
 		
-		String query = "SELECT * FROM season";
+		String query = "SELECT * FROM player WHERE PlayerId = ?";
 		
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -161,14 +152,11 @@ public class MySQLSeasonDAO implements SeasonDAO {
 
 			conn = DBUtility.open();
 			ps = conn.prepareStatement(query);
+			ps.setInt(1, playerId);
 			rs = ps.executeQuery();
-			
-			DAOFactory factory = new MySQLDAOFactory();
-			PlayerDAO player = factory.getPlayerDAO();
 
-			while(rs.next()) {
-				SeasonDTO season = new SeasonDTO(rs.getInt(1), rs.getDate(2), rs.getDate(3), rs.getDate(10), rs.getDate(11), rs.getInt(9), player.getPlayer(rs.getInt(4)), player.getPlayer(rs.getInt(5)), player.getPlayer(rs.getInt(6)), player.getPlayer(rs.getInt(7)), player.getPlayer(rs.getInt(8)));
-				retVal.add(season);
+			if(rs.next()) {
+				retVal = new PlayerDTO(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDate(4), rs.getInt(5), rs.getInt(6));
 			}
 
 		} catch (SQLException e) {
