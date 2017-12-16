@@ -5,7 +5,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
 
 import org.unibl.etf.nba.persistence.dbutility.mysql.DBUtility;
 import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
@@ -13,7 +12,7 @@ import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 public class MySQLSeasonDAO implements SeasonDAO {
 
 	@Override
-	public boolean addSeason(Date start, Date end, int n, Date playoffStart) {
+	public boolean addSeason(SeasonDTO season) {
 		boolean retVal = false;
 		
 		String query = "INSERT INTO season VALUE (null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -27,68 +26,38 @@ public class MySQLSeasonDAO implements SeasonDAO {
 			conn.setAutoCommit(false);
 			ps = conn.prepareStatement(query);
 			
-			ps.setDate(1, new java.sql.Date(start.getTime()));
-			ps.setDate(2, new java.sql.Date(end.getTime()));
-			ps.setNull(3, java.sql.Types.INTEGER);
-			ps.setNull(4, java.sql.Types.INTEGER);
-			ps.setNull(5, java.sql.Types.INTEGER);
-			ps.setNull(6, java.sql.Types.INTEGER);
-			ps.setNull(7, java.sql.Types.INTEGER);
-			ps.setInt(8, n);
-			ps.setDate(9, new java.sql.Date(playoffStart.getTime()));
-			ps.setNull(10, java.sql.Types.DATE);
-			
-			retVal = ps.executeUpdate() == 1;
-			
-			if(retVal) {
-				conn.commit();
+			ps.setDate(1, new java.sql.Date(season.getStartDate().getTime()));
+			ps.setDate(2, new java.sql.Date(season.getEndDate().getTime()));
+			DAOFactory factory = new MySQLDAOFactory();
+			PlayerDAO playerDAO = factory.getPlayerDAO();
+			if(season.getMvp() == null) {
+				ps.setNull(3, java.sql.Types.INTEGER);
 			} else {
-				throw new SQLException("Rollback needed!");
+				ps.setInt(3, playerDAO.getPlayerId(season.getMvp().getFirstName(), season.getMvp().getLastName()));
 			}
-			
-		} catch(SQLException e) {
-			try {
-				conn.rollback();
-			} catch (SQLException ex) {
-				
+			if(season.getMvp() == null) {
+				ps.setNull(4, java.sql.Types.INTEGER);
+			} else {
+				ps.setInt(4, playerDAO.getPlayerId(season.getDefensivePlayer().getFirstName(), season.getDefensivePlayer().getLastName()));
 			}
-			e.printStackTrace();
-		} finally {
-			try {
-				conn.setAutoCommit(true);
-			} catch(SQLException e) {
-				
+			if(season.getMvp() == null) {
+				ps.setNull(5, java.sql.Types.INTEGER);
+			} else {
+				ps.setInt(5, playerDAO.getPlayerId(season.getSixthMan().getFirstName(), season.getSixthMan().getLastName()));
 			}
-			DBUtility.close(conn, ps);
-		}
-		
-		return retVal;
-	}
-	
-	public boolean addCompleteSeason(Date start, Date end, int mvp, int dp, int smoty, int roty, int mip, int nog, Date playoffStart, Date playoffEnd) {
-		boolean retVal = false;
-		
-		String query = "INSERT INTO season VALUE (null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-		
-		Connection conn = null;
-		PreparedStatement ps = null;
-		
-		try {
-			
-			conn = DBUtility.open();
-			conn.setAutoCommit(false);
-			ps = conn.prepareStatement(query);
-			
-			ps.setDate(1, new java.sql.Date(start.getTime()));
-			ps.setDate(2, new java.sql.Date(end.getTime()));
-			ps.setInt(3, mvp);
-			ps.setInt(4, dp);
-			ps.setInt(5, smoty);
-			ps.setInt(6, roty);
-			ps.setInt(7, mip);
-			ps.setInt(8, nog);
-			ps.setDate(9, new java.sql.Date(playoffStart.getTime()));
-			ps.setDate(10, new java.sql.Date(playoffEnd.getTime()));
+			if(season.getMvp() == null) {
+				ps.setNull(6, java.sql.Types.INTEGER);
+			} else {
+				ps.setInt(6, playerDAO.getPlayerId(season.getRoty().getFirstName(), season.getRoty().getLastName()));
+			}
+			if(season.getMvp() == null) {
+				ps.setNull(7, java.sql.Types.INTEGER);
+			} else {
+				ps.setInt(7, playerDAO.getPlayerId(season.getMip().getFirstName(), season.getMip().getLastName()));
+			}
+			ps.setInt(8, season.getNumberOfGames());
+			ps.setDate(9, new java.sql.Date(season.getPlayoffStartDate().getTime()));
+			ps.setDate(10, new java.sql.Date(season.getPlayoffEndDate().getTime()));
 			
 			retVal = ps.executeUpdate() == 1;
 			
@@ -175,6 +144,58 @@ public class MySQLSeasonDAO implements SeasonDAO {
 			e.printStackTrace();
 		} finally {
 			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public boolean updateSeason(SeasonDTO season) {
+		boolean retVal = false;
+
+		String query = "UPDATE season SET StartDate = ?, EndDate = ?, MVP = ?, DefensivePlayer = ?, SixthMan = ?, RookieOfTheYear = ?, MIP = ?, NumberOfGames = ?, PlayoffStartDate = ?, PlayoffEndDate = ? WHERE SeasonId = ?";
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+
+		try {
+
+			conn = DBUtility.open();
+			conn.setAutoCommit(false);
+			ps = conn.prepareStatement(query);
+
+			ps.setDate(1, new java.sql.Date(season.getStartDate().getTime()));
+			ps.setDate(2, new java.sql.Date(season.getEndDate().getTime()));
+			ps.setInt(3, season.getMvp().getId());
+			ps.setInt(4, season.getDefensivePlayer().getId());
+			ps.setInt(5, season.getSixthMan().getId());
+			ps.setInt(6, season.getRoty().getId());
+			ps.setInt(7, season.getMip().getId());
+			ps.setInt(8, season.getNumberOfGames());
+			ps.setDate(9, new java.sql.Date(season.getPlayoffStartDate().getTime()));
+			ps.setDate(10, new java.sql.Date(season.getPlayoffEndDate().getTime()));
+			ps.setInt(11, season.getSeasonId());
+
+			retVal = ps.executeUpdate() == 1;
+
+			if (retVal) {
+				conn.commit();
+			} else {
+				throw new SQLException("Rollback needed!");
+			}
+
+		} catch (SQLException e) {
+			try {
+				conn.rollback();
+			} catch (SQLException ex) {
+			}
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.setAutoCommit(true);
+			} catch (SQLException e) {
+			}
+			DBUtility.close(conn, ps);
 		}
 		
 		return retVal;

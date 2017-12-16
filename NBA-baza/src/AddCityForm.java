@@ -1,6 +1,9 @@
 import java.awt.Color;
-import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -21,27 +24,41 @@ public class AddCityForm extends JFrame {
 	private JLabel countryLbl;
 	private JTextField countryTF;
 	private JButton saveBtn;
-
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					AddCityForm frame = new AddCityForm();
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-	}
+	
+	private AddPlayerForm addPlayerForm;
+	private AddArenaForm addArenaForm;
+	private AddCityFormController addCityFormController;
 
 	/**
 	 * Create the frame.
 	 */
-	public AddCityForm() {
+	public AddCityForm(Object object) {
+		
+		addWindowListener(new WindowListener() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				AddPlayerFormController.resetAddCityFormOpened();
+			}
+
+			@Override
+			public void windowOpened(WindowEvent e) {}
+
+			@Override
+			public void windowClosing(WindowEvent e) {}
+
+			@Override
+			public void windowIconified(WindowEvent e) {}
+
+			@Override
+			public void windowDeiconified(WindowEvent e) {}
+
+			@Override
+			public void windowActivated(WindowEvent e) {}
+
+			@Override
+			public void windowDeactivated(WindowEvent e) {}
+		});
+		
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(100, 50, 330, 290);
 		setBackground(new Color(255, 255, 255));
@@ -53,6 +70,20 @@ public class AddCityForm extends JFrame {
 		contentPane.setBackground(new Color(0, 102, 204));
 		setContentPane(contentPane);
 		
+		if(object instanceof AddPlayerForm) {
+			addPlayerForm = (AddPlayerForm) object;
+			addArenaForm = null;
+		} else if(object instanceof AddArenaForm) {
+			addPlayerForm = null;
+			addArenaForm = (AddArenaForm) object;
+		}
+		addCityFormController = new AddCityFormController(this);
+		
+		initComponents();
+		initButtonListener();
+	}
+	
+	private void initComponents() {
 		nameLbl = new JLabel("Name: ");
 		nameLbl.setBounds(10, 10, 300, 25);
 		nameLbl.setFont(new Font("Century Gothic", Font.BOLD, 18));
@@ -88,6 +119,37 @@ public class AddCityForm extends JFrame {
 		saveBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
 		saveBtn.setBackground(Color.WHITE);
 		contentPane.add(saveBtn);
+	}
+	
+	private void initButtonListener() {
+		
+		saveBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				addCityFormController.save();
+			}
+		});
+		
+	}
+	
+	public String getName() {
+		return nameTF.getText();
+	}
+	
+	public String getStateOfCity() {
+		return stateTF.getText();
+	}
+	
+	public String getCountry() {
+		return countryTF.getText();
+	}
+	
+	public AddPlayerForm getAddPlayerForm() {
+		return addPlayerForm;
+	}
+	
+	public AddArenaForm getAddArenaForm() {
+		return addArenaForm;
 	}
 
 }

@@ -12,12 +12,13 @@ public class PlayerDTO {
 	private int height;
 	private int weight;
 	private ArrayList<String> positions;
+	private CityDTO birthplace;
 	
 	public PlayerDTO() {
 		super();
 	}
 	
-	public PlayerDTO(String firstName, String lastName, Date birthdate, int height, int weight, ArrayList<String> positions) {
+	public PlayerDTO(String firstName, String lastName, Date birthdate, int height, int weight, ArrayList<String> positions, CityDTO birthplace) {
 		this.id = 0;
 		this.firstName = firstName;
 		this.lastName = lastName;
@@ -25,9 +26,10 @@ public class PlayerDTO {
 		this.height = height;
 		this.weight = weight;
 		this.positions = positions;
+		this.birthplace = birthplace;
 	}
 	
-	public PlayerDTO(int id, String firstName, String lastName, Date birthdate, int height, int weight) {
+	public PlayerDTO(int id, String firstName, String lastName, Date birthdate, int height, int weight, CityDTO birthplace) {
 		this.id = id;
 		this.firstName = firstName;
 		this.lastName = lastName;
@@ -35,6 +37,7 @@ public class PlayerDTO {
 		this.height = height;
 		this.weight = weight;
 		this.positions = new ArrayList<>();
+		this.birthplace = birthplace;
 	}
 
 	public int getId() {
@@ -91,6 +94,36 @@ public class PlayerDTO {
 
 	public void setPositions(ArrayList<String> positions) {
 		this.positions = positions;
+	}
+
+	public CityDTO getBirthplace() {
+		return birthplace;
+	}
+
+	public void setBirthplace(CityDTO birthplace) {
+		this.birthplace = birthplace;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + id;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		PlayerDTO other = (PlayerDTO) obj;
+		if (id != other.id)
+			return false;
+		return true;
 	}
 
 }

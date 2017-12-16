@@ -17,4 +17,19 @@ public class MySQLDAOFactory implements DAOFactory {
 		return new MySQLCityDAO();
 	}
 
+	@Override
+	public ArenaDAO getArenaDAO() {
+		return new MySQLArenaDAO();
+	}
+
+	@Override
+	public FranchiseDAO getFranchiseDAO() {
+		return new MySQLFranchiseDAO();
+	}
+
+	@Override
+	public GameDAO getGameDAO() {
+		return new MySQLGameDAO();
+	}
+
 }

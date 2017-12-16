@@ -7,6 +7,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 
@@ -50,9 +51,12 @@ public class MainForm extends JFrame {
 	private JButton addPlayerBtn;
 	private JButton editPlayerBtn;
 	private JButton addSeasonBtn;
+	private JButton addSeasonAwardsBtn;
+	private JButton addArenaBtn;
 	
 	private HashMap<Integer, Integer[]> mapCalendar;
 	private HashMap<String, SeasonDTO> mapSeason;
+	private MainFormController mainFormController;
 	
 	private boolean leapYear = false;
 
@@ -104,6 +108,7 @@ public class MainForm extends JFrame {
 		
 		Calendar calendar = new GregorianCalendar();
 		mapSeason = new HashMap<>();
+		mainFormController = new MainFormController(this);
 		
 		for(int i = 0; i < seasons.size(); i++) {
 			calendar.setTime(seasons.get(i).getStartDate());
@@ -161,12 +166,15 @@ public class MainForm extends JFrame {
 			dtm.addRow(rowData);
 		}
 		
-		gamesTbl = new JTable(dtm);
+		gamesTbl = new JTable(dtm) {
+			public boolean isCellEditable(int row, int column) {                
+                return false;               
+			};
+		};
 		gamesTbl.setAutoCreateRowSorter(true);
 		gamesTbl.setFont(new Font("Century Gothic", Font.BOLD, 12));
 		gamesTbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		gamesTbl.setForeground(new Color(0, 0, 139));
-//		gamesTbl.setBackground(new Color(173, 216, 230));
 		gamesTbl.setBackground(Color.white);
 		gamesTbl.getTableHeader().setFont(new Font("Cetury Gothic", Font.BOLD, 12));
 		gamesTbl.getTableHeader().setBackground(Color.white);
@@ -174,7 +182,6 @@ public class MainForm extends JFrame {
 		scroll = new JScrollPane(gamesTbl);
 		scroll.setBounds(10, 150, 600, 263);
 		scroll.setBackground(new Color(173, 216, 230));
-//		scroll.getViewport().setBackground(new Color(173, 216, 230));
 		scroll.getViewport().setBackground(Color.white);
 		contentPane.add(scroll);
 	}
@@ -428,7 +435,7 @@ public class MainForm extends JFrame {
 		contentPane.add(editGameBtn);
 		
 		buttonPane = new JPanel();
-		buttonPane.setBounds(630, 10, 250, 630);
+		buttonPane.setBounds(610, 10, 300, 630);
 		buttonPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		buttonPane.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 20));
 		buttonPane.setBackground(new Color(0, 102, 204));
@@ -452,13 +459,25 @@ public class MainForm extends JFrame {
 		buttonPane.add(addSeasonBtn);
 		buttons.add(addSeasonBtn);
 		
+		addSeasonAwardsBtn = new JButton("Add season awards");
+		addSeasonAwardsBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		addSeasonAwardsBtn.setBackground(Color.WHITE);
+		buttonPane.add(addSeasonAwardsBtn);
+		buttons.add(addSeasonAwardsBtn);
+		
+		addArenaBtn = new JButton("Add arena");
+		addArenaBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		addArenaBtn.setBackground(Color.WHITE);
+		buttonPane.add(addArenaBtn);
+		buttons.add(addArenaBtn);
+		
 		setButtonsSize();
 		setButtonsListeners();
 	}
 	
 	private void setButtonsSize() {
 		for(JButton button : buttons) {
-			button.setPreferredSize(new Dimension(139, 33));
+			button.setPreferredSize(new Dimension(208, 33));
 		}
 	}
 	
@@ -471,6 +490,101 @@ public class MainForm extends JFrame {
 			}
 		});
 		
+		editPlayerBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MainFormController.createChoosePlayerForm();
+			}
+		});
+		
+		addSeasonBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MainFormController.createAddSeasonForm();
+			}
+		});
+		
+		addSeasonAwardsBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MainFormController.createAddSeasonAwardsForm();
+			}
+		});
+		
+		addArenaBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MainFormController.createAddArenaForm();
+			}
+		});
+		
+		addGameBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainFormController.createAddGameForm();
+			}
+		});
+		
+	}
+	
+	public SeasonDTO getSelectedSeason() {
+		return mapSeason.get(seasonCB.getSelectedItem());
+	}
+	
+	public Date getSelectedDate() {
+		int day = (Integer) dayCB.getSelectedItem();
+		String month = (String) monthCB.getSelectedItem();
+		int m = 0;
+		switch(month) {
+			case "January":
+				m = 1;
+				break;
+			case "February":
+				m = 2;
+				break;
+			case "March":
+				m = 3;
+				break;
+			case "April":
+				m = 4;
+				break;
+			case "May":
+				m = 5;
+				break;
+			case "June":
+				m = 6;
+				break;
+			case "July":
+				m = 7;
+				break;
+			case "August":
+				m = 8;
+				break;
+			case "September":
+				m = 9;
+				break;
+			case "October":
+				m = 10;
+				break;
+			case "November":
+				m = 11;
+				break;
+			case "December":
+				m = 12;
+				break;
+		}
+		SeasonDTO season = getSelectedSeason();
+		Calendar calendar = new GregorianCalendar();
+		if(m == 8 || m == 9 || m == 10 || m ==1 || m == 12) {
+			calendar.setTime(season.getStartDate());
+			int year = calendar.get(Calendar.YEAR);
+			calendar.set(year, m - 1, day);
+		} else {
+			calendar.setTime(season.getEndDate());
+			int year = calendar.get(Calendar.YEAR);
+			calendar.set(year, m - 1, day);
+		}
+		return calendar.getTime();
 	}
 
 }
