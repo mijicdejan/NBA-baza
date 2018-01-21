@@ -16,17 +16,24 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerDateModel;
 import javax.swing.border.EmptyBorder;
 
+import org.unibl.etf.nba.persistence.model.dao.ArenaDAO;
 import org.unibl.etf.nba.persistence.model.dao.DAOFactory;
 import org.unibl.etf.nba.persistence.model.dao.FranchiseDAO;
 import org.unibl.etf.nba.persistence.model.dao.GameDAO;
 import org.unibl.etf.nba.persistence.model.dao.MySQLDAOFactory;
+import org.unibl.etf.nba.persistence.model.dao.RefereeDAO;
+import org.unibl.etf.nba.persistence.model.dto.ArenaDTO;
 import org.unibl.etf.nba.persistence.model.dto.FranchiseDTO;
+import org.unibl.etf.nba.persistence.model.dto.RefereeDTO;
 import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 
 @SuppressWarnings("serial")
@@ -51,22 +58,36 @@ public class AddGameForm extends JFrame {
 	protected JButton addArenaBtn;
 	protected JButton saveBtn;
 	
+	protected JLabel availableRefereesLbl;
+	protected JLabel chosenRefereesLbl;
+	protected JList<RefereeDTO> availableRefereesList;
+	protected JList<RefereeDTO> chosenRefereesList;
+	protected JScrollPane availableScroll;
+	protected JScrollPane chosenScroll;
+	protected JButton addRefereeBtn;
+	protected JButton removeRefereeBtn;
+	
 	protected Date date;
 	protected SeasonDTO season;
 	
 	protected ArrayList<FranchiseDTO> franchises;
+	protected ArrayList<FranchiseDTO> franchisesAway;
+	protected ArrayList<ArenaDTO> arenas;
 	
 	protected AddGameFormController addGameFormController;
+	protected MainForm mainForm;
 
 	/**
 	 * Create the frame.
 	 */
-	public AddGameForm(Date date, SeasonDTO season) {
+	public AddGameForm(MainForm mainForm) {
 		
 		addWindowListener(new WindowListener() {
 			@Override
 			public void windowClosed(WindowEvent e) {
+				PlayoffFormController.resetAddGameFormOpened();
 				MainFormController.resetAddGameFormOpened();
+				MainFormController.resetEditGameFormOpened();
 			}
 
 			@Override
@@ -89,7 +110,7 @@ public class AddGameForm extends JFrame {
 		});
 		
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		setBounds(100, 50, 330, 580);
+		setBounds(100, 50, 880, 580);
 		setBackground(new Color(255, 255, 255));
 		setTitle("Add game");
 		setResizable(false);
@@ -99,6 +120,62 @@ public class AddGameForm extends JFrame {
 		contentPane.setBackground(new Color(0, 102, 204));
 		setContentPane(contentPane);
 		
+		this.mainForm = mainForm;
+		this.date = mainForm.getSelectedDate();
+		this.season = mainForm.getSelectedSeason();
+		
+		addGameFormController = new AddGameFormController(this);
+		
+		initComponents();
+		initHomeTeamCBValues();
+		initAwayTeamCBValues();
+		initArenaCBValues();
+		initCBListeners();
+		initCheckBoxListeners();
+		initButtonsListeners();
+	}
+	
+	public AddGameForm(SeasonDTO season, Date date) {
+		
+		addWindowListener(new WindowListener() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				MainFormController.resetAddGameFormOpened();
+				MainFormController.resetEditGameFormOpened();
+				PlayoffFormController.resetAddGameFormOpened();
+			}
+
+			@Override
+			public void windowOpened(WindowEvent e) {}
+
+			@Override
+			public void windowClosing(WindowEvent e) {}
+
+			@Override
+			public void windowIconified(WindowEvent e) {}
+
+			@Override
+			public void windowDeiconified(WindowEvent e) {}
+
+			@Override
+			public void windowActivated(WindowEvent e) {}
+
+			@Override
+			public void windowDeactivated(WindowEvent e) {}
+		});
+		
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		setBounds(100, 50, 880, 580);
+		setBackground(new Color(255, 255, 255));
+		setTitle("Add game");
+		setResizable(false);
+		contentPane = new JPanel();
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setLayout(null);
+		contentPane.setBackground(new Color(0, 102, 204));
+		setContentPane(contentPane);
+		
+		this.mainForm = null;
 		this.date = date;
 		this.season = season;
 		
@@ -107,8 +184,10 @@ public class AddGameForm extends JFrame {
 		initComponents();
 		initHomeTeamCBValues();
 		initAwayTeamCBValues();
+		initArenaCBValues();
 		initCBListeners();
 		initCheckBoxListeners();
+		initButtonsListeners();
 	}
 	
 	private void initComponents() {
@@ -117,7 +196,6 @@ public class AddGameForm extends JFrame {
 		timeLbl.setFont(new Font("Century Gothic", Font.BOLD, 18));
 		contentPane.add(timeLbl);
 		
-		Date date = new Date();
 		Calendar calendar = new GregorianCalendar();
 		calendar.setTime(date);
 		calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH), 20, 0);
@@ -207,6 +285,51 @@ public class AddGameForm extends JFrame {
 		saveBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
 		saveBtn.setBackground(Color.WHITE);
 		contentPane.add(saveBtn);
+		
+		DAOFactory factory = new MySQLDAOFactory();
+		RefereeDAO refereeDAO = factory.getRefereeDAO();
+		ArrayList<RefereeDTO> available = refereeDAO.getAllReferees();
+		ArrayList<RefereeDTO> unavailable = refereeDAO.getAllUnavailableReferees(date);
+		available.removeAll(unavailable);
+		
+		availableRefereesLbl = new JLabel("Available referees: ");
+		availableRefereesLbl.setBounds(340, 55, 200, 25);
+		availableRefereesLbl.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		contentPane.add(availableRefereesLbl);
+		
+		availableRefereesList = new JList<>(new RefereeListModel(available));
+		availableRefereesList.setFont(new Font("Century Gothic", Font.BOLD, 15));
+		availableRefereesList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+		availableScroll = new JScrollPane();
+		availableScroll.setViewportView(availableRefereesList);
+		availableScroll.setBounds(340, 80, 200, 300);
+		contentPane.add(availableScroll);
+		
+		chosenRefereesLbl = new JLabel("Chosen referees: ");
+		chosenRefereesLbl.setBounds(640, 55, 200, 25);
+		chosenRefereesLbl.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		contentPane.add(chosenRefereesLbl);
+		
+		chosenRefereesList = new JList<>(new RefereeListModel(new ArrayList<>()));
+		chosenRefereesList.setFont(new Font("Century Gothic", Font.BOLD, 15));
+		chosenRefereesList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+		chosenScroll = new JScrollPane();
+		chosenScroll.setViewportView(chosenRefereesList);
+		chosenScroll.setBounds(640, 80, 200, 300);
+		contentPane.add(chosenScroll);
+		
+		addRefereeBtn = new JButton(">");
+		addRefereeBtn.setBounds(560, 140, 60, 60);
+		addRefereeBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		addRefereeBtn.setBackground(Color.WHITE);
+		contentPane.add(addRefereeBtn);
+		
+		removeRefereeBtn = new JButton("<");
+		removeRefereeBtn.setBounds(560, 260, 60, 60);
+		removeRefereeBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		removeRefereeBtn.setBackground(Color.WHITE);
+		removeRefereeBtn.setEnabled(false);
+		contentPane.add(removeRefereeBtn);
 	}
 	
 	private void initHomeTeamCBValues() {
@@ -231,59 +354,72 @@ public class AddGameForm extends JFrame {
 		}
 	}
 	
-	private void initAwayTeamCBValues() {
+	protected void initAwayTeamCBValues() {
 		awayTeamCB.removeAllItems();
-		FranchiseDTO homeFranchise = franchises.get(homeTeamCB.getSelectedIndex());
-		DAOFactory factory = new MySQLDAOFactory();
-		GameDAO gameDAO = factory.getGameDAO();
-		FranchiseDAO franchiseDAO = factory.getFranchiseDAO();
-		ArrayList<FranchiseDTO> franchisesAway = franchiseDAO.getAllFranchisesInSeason(season);
-		ArrayList<FranchiseDTO> sameDivision = new ArrayList<>();
-		ArrayList<FranchiseDTO> sameConference = new ArrayList<>();
-		ArrayList<FranchiseDTO> differentConference = new ArrayList<>();
-		franchisesAway.remove(homeFranchise);
-		for(int i = 0; i < franchisesAway.size(); i++) {
-			if(gameDAO.doesTeamHaveMatchOnDate(franchisesAway.get(i), date)) {
-				franchisesAway.remove(franchisesAway.get(i));
-				i--;
+		FranchiseDTO homeFranchise = (homeTeamCB.getSelectedIndex() == -1) ? null : franchises.get(homeTeamCB.getSelectedIndex());
+		if(homeFranchise != null) {
+			DAOFactory factory = new MySQLDAOFactory();
+			GameDAO gameDAO = factory.getGameDAO();
+			FranchiseDAO franchiseDAO = factory.getFranchiseDAO();
+			franchisesAway = franchiseDAO.getAllFranchisesInSeason(season);
+			ArrayList<FranchiseDTO> sameDivision = new ArrayList<>();
+			ArrayList<FranchiseDTO> sameConference = new ArrayList<>();
+			ArrayList<FranchiseDTO> differentConference = new ArrayList<>();
+			franchisesAway.remove(homeFranchise);
+			for(int i = 0; i < franchisesAway.size(); i++) {
+				if(gameDAO.doesTeamHaveMatchOnDate(franchisesAway.get(i), date)) {
+					franchisesAway.remove(franchisesAway.get(i));
+					i--;
+				}
 			}
-		}
-		for(int i = 0; i < franchisesAway.size(); i++) {
-			if(homeFranchise.getDivisionId() == franchisesAway.get(i).getDivisionId()) {
-				sameDivision.add(franchisesAway.get(i));
+			for(int i = 0; i < franchisesAway.size(); i++) {
+				if(homeFranchise.getDivisionId() == franchisesAway.get(i).getDivisionId()) {
+					sameDivision.add(franchisesAway.get(i));
+				}
 			}
-		}
-		for(int i = 0; i < franchisesAway.size(); i++) {
-			if(homeFranchise.getConferenceId() == franchisesAway.get(i).getConferenceId() && homeFranchise.getDivisionId() != franchisesAway.get(i).getDivisionId()) {
-				sameConference.add(franchisesAway.get(i));
+			for(int i = 0; i < franchisesAway.size(); i++) {
+				if(homeFranchise.getConferenceId() == franchisesAway.get(i).getConferenceId() && homeFranchise.getDivisionId() != franchisesAway.get(i).getDivisionId()) {
+					sameConference.add(franchisesAway.get(i));
+				}
 			}
-		}
-		for(int i = 0; i < franchisesAway.size(); i++) {
-			if(homeFranchise.getConferenceId() == franchisesAway.get(i).getConferenceId()) {
-				differentConference.add(franchisesAway.get(i));
+			for(int i = 0; i < franchisesAway.size(); i++) {
+				if(homeFranchise.getConferenceId() == franchisesAway.get(i).getConferenceId()) {
+					differentConference.add(franchisesAway.get(i));
+				}
 			}
-		}
-		for(int i = 0; i < sameDivision.size(); i++) {
-			if(gameDAO.getNumberOfGamesBetweenTeamsInSeason(homeFranchise, sameDivision.get(i), season) == 2) {
-				franchisesAway.remove(sameDivision.get(i));
+			for(int i = 0; i < sameDivision.size(); i++) {
+				if(gameDAO.getNumberOfGamesBetweenTeamsInSeason(homeFranchise, sameDivision.get(i), season) == 2) {
+					franchisesAway.remove(sameDivision.get(i));
+				}
 			}
-		}
-		for(int i = 0; i < sameConference.size(); i++) {
-			int n1 = gameDAO.getNumberOfGamesBetweenTeamsInSeason(homeFranchise, sameConference.get(i), season);
-			int n2 = gameDAO.getNumberOfGamesBetweenTeamsInSeason(sameConference.get(i), homeFranchise, season);
-			if(n1 == 2 || (n1 + n2) == 3) {
-				franchisesAway.remove(sameConference.get(i));
+			for(int i = 0; i < sameConference.size(); i++) {
+				int n1 = gameDAO.getNumberOfGamesBetweenTeamsInSeason(homeFranchise, sameConference.get(i), season);
+				int n2 = gameDAO.getNumberOfGamesBetweenTeamsInSeason(sameConference.get(i), homeFranchise, season);
+				if(n1 == 2 || (n1 + n2) == 3) {
+					franchisesAway.remove(sameConference.get(i));
+				}
 			}
-		}
-		for(int i = 0; i < differentConference.size(); i++) {
-			if(gameDAO.getNumberOfGamesBetweenTeamsInSeason(homeFranchise, differentConference.get(i), season) == 1) {
-				franchisesAway.remove(differentConference.get(i));
+			for(int i = 0; i < differentConference.size(); i++) {
+				if(gameDAO.getNumberOfGamesBetweenTeamsInSeason(homeFranchise, differentConference.get(i), season) == 1) {
+					franchisesAway.remove(differentConference.get(i));
+				}
 			}
-		}
 		
-		for(int i = 0; i < franchisesAway.size(); i++) {
-			awayTeamCB.addItem(franchisesAway.get(i).getTeamNames().get(season));
+			for(int i = 0; i < franchisesAway.size(); i++) {
+				awayTeamCB.addItem(franchisesAway.get(i).getTeamNames().get(season));
+			}
 		}
+	}
+	
+	private void initArenaCBValues() {
+		DAOFactory factory = new MySQLDAOFactory();
+		ArenaDAO arenaDAO = factory.getArenaDAO();
+		arenas = arenaDAO.getAllArenas();
+		for(int i = 0; i < arenas.size(); i++) {
+			neutralArenaCB.addItem(arenas.get(i).getName());
+		}
+		neutralArenaCB.addItem("");
+		neutralArenaCB.setSelectedItem("");
 	}
 	
 	private void initCBListeners() {
@@ -315,6 +451,52 @@ public class AddGameForm extends JFrame {
 		
 	}
 	
+	private void initButtonsListeners() {
+		
+		addArenaBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				AddGameFormController.createAddArenaForm();
+			}
+		});
+		
+		addRefereeBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(!availableRefereesList.isSelectionEmpty()) {
+					addGameFormController.addReferee(availableRefereesList, chosenRefereesList);
+					availableRefereesList.clearSelection();
+					if(chosenRefereesList.getModel().getSize() == 3) {
+						addRefereeBtn.setEnabled(false);
+					}
+					removeRefereeBtn.setEnabled(true);
+				}
+			}
+		});
+		
+		removeRefereeBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(!chosenRefereesList.isSelectionEmpty()) {
+					addGameFormController.removeReferee(availableRefereesList, chosenRefereesList);
+					chosenRefereesList.clearSelection();
+					if(chosenRefereesList.getModel().getSize() == 0) {
+						removeRefereeBtn.setEnabled(false);
+					}
+					addRefereeBtn.setEnabled(true);
+				}
+			}
+		});
+		
+		saveBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				addGameFormController.save();
+			}
+		});
+		
+	}
+	
 	public JCheckBox getAddScoreBox() {
 		return addScoreBox;
 	}
@@ -331,6 +513,57 @@ public class AddGameForm extends JFrame {
 	public void setEnabledArena(boolean b) {
 		neutralArenaCB.setEnabled(b);
 		addArenaBtn.setEnabled(b);
+		if(b == true) {
+			neutralArenaCB.removeItem("");
+			neutralArenaCB.setSelectedIndex(0);
+		} else {
+			neutralArenaCB.addItem("");
+			neutralArenaCB.setSelectedItem("");
+		}
+	}
+	
+	public FranchiseDTO getHomeTeam() {
+		return franchises.get(homeTeamCB.getSelectedIndex());
+	}
+	
+	public FranchiseDTO getAwayTeam() {
+		return franchisesAway.get(awayTeamCB.getSelectedIndex());
+	}
+	
+	public Date getGameTime() {
+		Calendar calendar = new GregorianCalendar();
+		calendar.setTime((Date) timeSpin.getModel().getValue());
+		int hour = calendar.get(Calendar.HOUR_OF_DAY);
+		int minute = calendar.get(Calendar.MINUTE);
+		calendar.setTime(date);
+		calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH), hour, minute, 0);
+		return calendar.getTime();
+	}
+	
+	public ArenaDTO getArena() {
+		return arenas.get(neutralArenaCB.getSelectedIndex());
+	}
+	
+	public SeasonDTO getSeason() {
+		return season;
+	}
+	
+	public ArrayList<RefereeDTO> getChosenReferees() {
+		return ((RefereeListModel) chosenRefereesList.getModel()).getData();
+	}
+	
+	public int getHomeTeamScore() throws NumberFormatException {
+		int score = Integer.parseInt(homeTeamScoreTF.getText());
+		return score;
+	}
+	
+	public int getAwayTeamScore() throws NumberFormatException {
+		int score = Integer.parseInt(awayTeamScoreTF.getText());
+		return score;
+	}
+	
+	public MainForm getMainForm() {
+		return mainForm;
 	}
 
 }

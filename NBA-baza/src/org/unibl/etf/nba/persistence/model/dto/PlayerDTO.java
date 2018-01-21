@@ -126,4 +126,9 @@ public class PlayerDTO {
 		return true;
 	}
 
+	@Override
+	public String toString() {
+		return firstName + " " + lastName;
+	}
+
 }

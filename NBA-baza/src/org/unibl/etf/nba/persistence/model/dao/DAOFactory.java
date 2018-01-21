@@ -8,5 +8,8 @@ public interface DAOFactory {
 	public ArenaDAO getArenaDAO();
 	public FranchiseDAO getFranchiseDAO();
 	public GameDAO getGameDAO();
+	public RefereeDAO getRefereeDAO();
+	public TradeDAO getTradeDAO();
+	public PerformanceDAO getPerformanceDAO();
 
 }

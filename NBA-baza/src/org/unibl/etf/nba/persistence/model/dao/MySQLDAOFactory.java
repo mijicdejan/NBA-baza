@@ -32,4 +32,19 @@ public class MySQLDAOFactory implements DAOFactory {
 		return new MySQLGameDAO();
 	}
 
+	@Override
+	public RefereeDAO getRefereeDAO() {
+		return new MySQLRefereeDAO();
+	}
+
+	@Override
+	public TradeDAO getTradeDAO() {
+		return new MySQLTradeDAO();
+	}
+
+	@Override
+	public PerformanceDAO getPerformanceDAO() {
+		return new MySQLPerformanceDAO();
+	}
+
 }

@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import org.unibl.etf.nba.persistence.dbutility.mysql.DBUtility;
+import org.unibl.etf.nba.persistence.model.dto.FranchiseDTO;
 import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 
 public class MySQLSeasonDAO implements SeasonDAO {
@@ -194,6 +195,85 @@ public class MySQLSeasonDAO implements SeasonDAO {
 			try {
 				conn.setAutoCommit(true);
 			} catch (SQLException e) {
+			}
+			DBUtility.close(conn, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public SeasonDTO getSeason(int seasonId) {
+		SeasonDTO retVal = null;
+		
+		String query = "SELECT * FROM season WHERE SeasonId = ?";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+
+		try {
+
+			conn = DBUtility.open();
+			ps = conn.prepareStatement(query);
+			ps.setInt(1, seasonId);
+			rs = ps.executeQuery();
+
+			DAOFactory factory = new MySQLDAOFactory();
+			PlayerDAO player = factory.getPlayerDAO();
+
+			if(rs.next()) {
+				retVal = new SeasonDTO(rs.getInt(1), rs.getDate(2), rs.getDate(3), rs.getDate(10), rs.getDate(11), rs.getInt(9), player.getPlayer(rs.getInt(4)), player.getPlayer(rs.getInt(5)), player.getPlayer(rs.getInt(6)), player.getPlayer(rs.getInt(7)), player.getPlayer(rs.getInt(8)));
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public boolean addTeamInPlayoff(FranchiseDTO team, SeasonDTO season, String result) {
+		boolean retVal = false;
+		
+		String query = "CALL addTeamInPlayoff(?, ?, ?)";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		
+		try {
+			
+			conn = DBUtility.open();
+			conn.setAutoCommit(false);
+			ps = conn.prepareStatement(query);
+			
+			ps.setInt(1, team.getFranchiseId());
+			ps.setInt(2, season.getSeasonId());
+			ps.setString(3, result);
+			
+			retVal = ps.executeUpdate() == 1;
+			
+			if(retVal) {
+				conn.commit();
+			} else {
+				throw new SQLException("Rollback needed!");
+			}
+			
+		} catch(SQLException e) {
+			try {
+				conn.rollback();
+			} catch (SQLException ex) {
+				
+			}
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.setAutoCommit(true);
+			} catch(SQLException e) {
+				
 			}
 			DBUtility.close(conn, ps);
 		}

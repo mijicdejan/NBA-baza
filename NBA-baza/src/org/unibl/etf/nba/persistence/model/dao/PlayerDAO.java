@@ -2,6 +2,7 @@ package org.unibl.etf.nba.persistence.model.dao;
 
 import java.util.ArrayList;
 
+import org.unibl.etf.nba.persistence.model.dto.FranchiseDTO;
 import org.unibl.etf.nba.persistence.model.dto.PlayerDTO;
 import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 
@@ -19,5 +20,10 @@ public interface PlayerDAO {
 	public boolean deletePlayersPositions(PlayerDTO player);
 	public ArrayList<PlayerDTO> getPlayersInSeason(SeasonDTO season);
 	public ArrayList<PlayerDTO> getRookies(SeasonDTO season);
+	public ArrayList<PlayerDTO> getPlayersWithTeam(SeasonDTO season);
+	public ArrayList<PlayerDTO> getRoster(FranchiseDTO franchise, SeasonDTO season);
+	public boolean isPlayerOnRoster(PlayerDTO player, FranchiseDTO franchise, SeasonDTO season);
+	public boolean addPlayerToRoster(PlayerDTO player, FranchiseDTO franchise, SeasonDTO season);
+	public boolean removePlayerFromRoster(PlayerDTO player, FranchiseDTO franchise, SeasonDTO season);
 
 }

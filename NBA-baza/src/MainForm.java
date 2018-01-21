@@ -5,11 +5,14 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -19,12 +22,17 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.RowSorter;
+import javax.swing.SortOrder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 
 import org.unibl.etf.nba.persistence.model.dao.DAOFactory;
+import org.unibl.etf.nba.persistence.model.dao.GameDAO;
 import org.unibl.etf.nba.persistence.model.dao.MySQLDAOFactory;
 import org.unibl.etf.nba.persistence.model.dao.SeasonDAO;
+import org.unibl.etf.nba.persistence.model.dto.GameDTO;
 import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 
 @SuppressWarnings("serial")
@@ -45,6 +53,7 @@ public class MainForm extends JFrame {
 	
 	private JButton addGameBtn;
 	private JButton editGameBtn;
+	private JButton gameDetailsBtn;
 	
 	private JPanel buttonPane;
 	private ArrayList<JButton> buttons;
@@ -53,10 +62,16 @@ public class MainForm extends JFrame {
 	private JButton addSeasonBtn;
 	private JButton addSeasonAwardsBtn;
 	private JButton addArenaBtn;
+	private JButton addRosterBtn;
+	private JButton standingsBtn;
+	private JButton addPlayoffGamesBtn;
+	private JButton playoffPictureBtn;
 	
-	private HashMap<Integer, Integer[]> mapCalendar;
-	private HashMap<String, SeasonDTO> mapSeason;
+	private HashMap<Integer, Integer[]> calendarMap;
+	private HashMap<String, SeasonDTO> seasonMap;
 	private MainFormController mainFormController;
+	
+	private ArrayList<GameDTO> games;
 	
 	private boolean leapYear = false;
 
@@ -107,7 +122,7 @@ public class MainForm extends JFrame {
 		ArrayList<SeasonDTO> seasons = seasonDAO.getAllSeasons();
 		
 		Calendar calendar = new GregorianCalendar();
-		mapSeason = new HashMap<>();
+		seasonMap = new HashMap<>();
 		mainFormController = new MainFormController(this);
 		
 		for(int i = 0; i < seasons.size(); i++) {
@@ -119,7 +134,7 @@ public class MainForm extends JFrame {
 			year = calendar.get(Calendar.YEAR);
 			s += year;
 			seasonCB.addItem(s);
-			mapSeason.put(s, seasons.get(i));
+			seasonMap.put(s, seasons.get(i));
 		}
 		
 		checkForLeapYear();
@@ -150,19 +165,51 @@ public class MainForm extends JFrame {
 		
 		initTable();
 		initCBListeners();
+		
+		
 	}
 	
-	private void initTable() {
+	public void initTable() {
+		try {
+			contentPane.remove(scroll);
+		} catch (Exception e) {
+			
+		}
+		scroll = new JScrollPane();
 
-		dtm = new DefaultTableModel();
+		dtm = new DefaultTableModel() {
+			@Override
+            public Class<?> getColumnClass(int column) {
+                switch (column) {
+                    case 0:
+                        return String.class;
+                    case 1:
+                        return String.class;
+                    case 4:
+                        return String.class;
+                    default:
+                        return Integer.class;
+                }
+            }
+		};
 		dtm.addColumn("Gametime");
 		dtm.addColumn("Home team");
 		dtm.addColumn("Home team score");
 		dtm.addColumn("Away team score");
 		dtm.addColumn("Away team");
+		dtm.setRowCount(0);
 		
-		Object[] rowData = { "1", "2", "3", "4", "5" };
-		for(int i = 0; i < 7; i++) {
+		DAOFactory factory = new MySQLDAOFactory();
+		GameDAO gameDAO = factory.getGameDAO();
+		games = gameDAO.getAllGamesOnDate(getSelectedDate());
+		
+		for(int i = 0; i < games.size(); i++) {
+			GameDTO game = games.get(i);
+			Calendar calendar = new GregorianCalendar();
+			calendar.setTime(game.getGameTime());
+			int hour = calendar.get(Calendar.HOUR_OF_DAY);
+			int minute = calendar.get(Calendar.MINUTE);
+			Object[] rowData = { String.format("%02d", hour) + ":" + String.format("%02d", minute), game.getHomeTeam().getTeamNames().get(seasonMap.get(seasonCB.getSelectedItem())), (game.getHomeTeamScore() == 0) ? "" : game.getHomeTeamScore(), (game.getAwayTeamScore() == 0) ? "" : game.getAwayTeamScore(), game.getAwayTeam().getTeamNames().get(seasonMap.get(seasonCB.getSelectedItem())) };
 			dtm.addRow(rowData);
 		}
 		
@@ -178,57 +225,91 @@ public class MainForm extends JFrame {
 		gamesTbl.setBackground(Color.white);
 		gamesTbl.getTableHeader().setFont(new Font("Cetury Gothic", Font.BOLD, 12));
 		gamesTbl.getTableHeader().setBackground(Color.white);
+		((DefaultTableModel) gamesTbl.getModel()).fireTableDataChanged();
 		
-		scroll = new JScrollPane(gamesTbl);
+		if(gamesTbl.getRowCount() == 15) {
+			addGameBtn.setEnabled(false);
+		} else {
+			addGameBtn.setEnabled(true);
+		}
+		
+//		if(gameDAO.getNumberOfFinishedGamesInRegularSeason(getSelectedSeason()) == 1230) {
+//			addPlayoffGamesBtn.setEnabled(true);
+//			playoffPictureBtn.setEnabled(true);
+//		} else {
+//			addPlayoffGamesBtn.setEnabled(false);
+//			playoffPictureBtn.setEnabled(false);
+//		}
+		
+		TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<DefaultTableModel>(dtm) {
+			@Override
+		    public boolean isSortable(int column) {
+		        if(column == 0)
+		            return true;
+		        else 
+		            return false;
+		    };
+		};
+		gamesTbl.setRowSorter(sorter);
+		List<RowSorter.SortKey> sortKeys = new ArrayList<>();
+		sortKeys.add(new RowSorter.SortKey(0, SortOrder.ASCENDING));
+		sorter.setSortKeys(sortKeys);
+		sorter.sort();
+		
+		scroll.setViewportView(gamesTbl);
 		scroll.setBounds(10, 150, 600, 263);
 		scroll.setBackground(new Color(173, 216, 230));
 		scroll.getViewport().setBackground(Color.white);
 		contentPane.add(scroll);
+		
+		setTableListener();
 	}
 	
 	private void initMap(boolean leapYear) {
-		mapCalendar = new HashMap<>();
+		calendarMap = new HashMap<>();
 		Integer[] jan = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
 		Integer[] feb1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28 };
 		Integer[] feb2 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 };
 		Integer[] apr = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30 };
-		mapCalendar.put(1, jan);
+		calendarMap.put(1, jan);
 		if(leapYear) {
-			mapCalendar.put(2, feb2);
+			calendarMap.put(2, feb2);
 		} else {
-			mapCalendar.put(2, feb1);
+			calendarMap.put(2, feb1);
 		}
-		mapCalendar.put(3, jan);
-		mapCalendar.put(4, apr);
-		mapCalendar.put(5, jan);
-		mapCalendar.put(6, apr);
-		mapCalendar.put(7, jan);
-		mapCalendar.put(8, jan);
-		mapCalendar.put(9, apr);
-		mapCalendar.put(10, jan);
-		mapCalendar.put(11, apr);
-		mapCalendar.put(12, jan);
+		calendarMap.put(3, jan);
+		calendarMap.put(4, apr);
+		calendarMap.put(5, jan);
+		calendarMap.put(6, apr);
+		calendarMap.put(7, jan);
+		calendarMap.put(8, jan);
+		calendarMap.put(9, apr);
+		calendarMap.put(10, jan);
+		calendarMap.put(11, apr);
+		calendarMap.put(12, jan);
 	}
 	
 	private void removeDays(int month, int startDay, int endDay) {
-		Integer[] days = mapCalendar.get(month);
-		Integer[] replacement = new Integer[days.length - (endDay - startDay)];
+		Integer[] days = calendarMap.get(month);
+		Integer[] replacement = new Integer[days.length - (endDay - startDay) + 1];
 		int i = 0;
 		for(Integer day : days) {
 			if(day < startDay || day > endDay) {
 				replacement[i++] = day;
 			}
 		}
-		mapCalendar.remove(month);
-		mapCalendar.put(month, replacement);
+		calendarMap.remove(month);
+		calendarMap.put(month, replacement);
 	}
 	
 	private void initDayCB(int month) {
 		if(month != 0) {
 			dayCB.removeAllItems();
-			Integer[] days = mapCalendar.get(month);
+			Integer[] days = calendarMap.get(month);
 			for(Integer day : days) {
-				dayCB.addItem(day);
+				if(day != null) {
+					dayCB.addItem(day);
+				}
 			}
 		}
 	}
@@ -239,7 +320,7 @@ public class MainForm extends JFrame {
 		}
 		Calendar calendar = new GregorianCalendar();
 		String season = (String) seasonCB.getSelectedItem();
-		SeasonDTO selectedSeason = mapSeason.get(season);
+		SeasonDTO selectedSeason = seasonMap.get(season);
 		calendar.setTime(selectedSeason.getStartDate());
 		int startMonth = calendar.get(Calendar.MONTH) + 1;
 		calendar.setTime(selectedSeason.getPlayoffEndDate());
@@ -357,12 +438,23 @@ public class MainForm extends JFrame {
 			}
 		});
 		
+		dayCB.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(dayCB.getItemCount() != 0) {
+					initTable();
+					editGameBtn.setEnabled(false);
+					gameDetailsBtn.setEnabled(false);
+				}
+			}
+		});
+		
 	}
 	
 	private void setMap() {
 		Calendar calendar = new GregorianCalendar();
 		String season = (String) seasonCB.getSelectedItem();
-		SeasonDTO selectedSeason = mapSeason.get(season);
+		SeasonDTO selectedSeason = seasonMap.get(season);
 		calendar.setTime(selectedSeason.getStartDate());
 		int startDay = calendar.get(Calendar.DAY_OF_MONTH);
 		int startMonth = calendar.get(Calendar.MONTH) + 1;
@@ -375,12 +467,12 @@ public class MainForm extends JFrame {
 		calendar.setTime(selectedSeason.getPlayoffEndDate());
 		int playoffEndDay = calendar.get(Calendar.DAY_OF_MONTH);
 		int playoffEndMonth = calendar.get(Calendar.MONTH) + 1;
-		removeDays(startMonth, 1, startDay - 1);
+		removeDays(startMonth, 0, startDay - 1);
 		if(endMonth == playoffStartMonth) {
 			removeDays(endMonth, endDay + 1, playoffStartDay - 1);
 		} else {
 			removeDays(endMonth, endDay + 1, 31);
-			removeDays(playoffStartMonth, 1, playoffStartDay - 1);
+			removeDays(playoffStartMonth, 0, playoffStartDay - 1);
 		}
 		removeDays(playoffEndMonth, playoffEndDay + 1, 31);
 	}
@@ -423,16 +515,24 @@ public class MainForm extends JFrame {
 		buttons = new ArrayList<>();
 		
 		addGameBtn = new JButton("Add game");
-		addGameBtn.setBounds(80, 430, 200, 40);
+		addGameBtn.setBounds(10, 430, 180, 40);
 		addGameBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
 		addGameBtn.setBackground(Color.WHITE);
 		contentPane.add(addGameBtn);
 		
 		editGameBtn = new JButton("Edit game");
-		editGameBtn.setBounds(340, 430, 200, 40);
+		editGameBtn.setBounds(220, 430, 180, 40);
 		editGameBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
 		editGameBtn.setBackground(Color.WHITE);
+		editGameBtn.setEnabled(false);
 		contentPane.add(editGameBtn);
+		
+		gameDetailsBtn = new JButton("Details");
+		gameDetailsBtn.setBounds(430, 430, 180, 40);
+		gameDetailsBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		gameDetailsBtn.setBackground(Color.WHITE);
+		gameDetailsBtn.setEnabled(false);
+		contentPane.add(gameDetailsBtn);
 		
 		buttonPane = new JPanel();
 		buttonPane.setBounds(610, 10, 300, 630);
@@ -471,13 +571,37 @@ public class MainForm extends JFrame {
 		buttonPane.add(addArenaBtn);
 		buttons.add(addArenaBtn);
 		
+		addRosterBtn = new JButton("Add roster");
+		addRosterBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		addRosterBtn.setBackground(Color.WHITE);
+		buttonPane.add(addRosterBtn);
+		buttons.add(addRosterBtn);
+		
+		standingsBtn = new JButton("Standings");
+		standingsBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		standingsBtn.setBackground(Color.WHITE);
+		buttonPane.add(standingsBtn);
+		buttons.add(standingsBtn);
+		
+		addPlayoffGamesBtn = new JButton("Add playoff games");
+		addPlayoffGamesBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		addPlayoffGamesBtn.setBackground(Color.WHITE);
+		buttonPane.add(addPlayoffGamesBtn);
+		buttons.add(addPlayoffGamesBtn);
+		
+		playoffPictureBtn = new JButton("Playoff picture");
+		playoffPictureBtn.setFont(new Font("Century Gothic", Font.BOLD, 18));
+		playoffPictureBtn.setBackground(Color.WHITE);
+		buttonPane.add(playoffPictureBtn);
+		buttons.add(playoffPictureBtn);
+		
 		setButtonsSize();
 		setButtonsListeners();
 	}
 	
 	private void setButtonsSize() {
 		for(JButton button : buttons) {
-			button.setPreferredSize(new Dimension(208, 33));
+			button.setPreferredSize(new Dimension(208, 30));
 		}
 	}
 	
@@ -518,6 +642,34 @@ public class MainForm extends JFrame {
 			}
 		});
 		
+		addRosterBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MainFormController.createAddRosterForm();
+			}
+		});
+		
+		standingsBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainFormController.createStandingsForm();
+			}
+		});
+		
+		addPlayoffGamesBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainFormController.createPlayoffForm();
+			}
+		});
+		
+		playoffPictureBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainFormController.createPlayoffPictureForm();
+			}
+		});
+		
 		addGameBtn.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -525,10 +677,43 @@ public class MainForm extends JFrame {
 			}
 		});
 		
+		editGameBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainFormController.createEditGameForm();
+			}
+		});
+		
+		gameDetailsBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainFormController.createGameDetailsForm();
+			}
+		});
+		
+	}
+	
+	private void setTableListener() {
+		
+		gamesTbl.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int selectedRow = gamesTbl.convertRowIndexToModel(gamesTbl.getSelectedRow());
+				Object rowData = gamesTbl.getModel().getValueAt(selectedRow, 2);
+				if("".equals(String.valueOf(rowData))) {
+					editGameBtn.setEnabled(true);
+					gameDetailsBtn.setEnabled(false);
+				} else {
+					editGameBtn.setEnabled(false);
+					gameDetailsBtn.setEnabled(true);
+				}
+			}
+		});
+		
 	}
 	
 	public SeasonDTO getSelectedSeason() {
-		return mapSeason.get(seasonCB.getSelectedItem());
+		return seasonMap.get(seasonCB.getSelectedItem());
 	}
 	
 	public Date getSelectedDate() {
@@ -585,6 +770,10 @@ public class MainForm extends JFrame {
 			calendar.set(year, m - 1, day);
 		}
 		return calendar.getTime();
+	}
+	
+	public GameDTO getSelectedGame() {
+		return (gamesTbl.getSelectedRow() == -1) ? null : games.get(gamesTbl.convertRowIndexToModel(gamesTbl.getSelectedRow()));
 	}
 
 }

@@ -9,6 +9,7 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 
 import org.unibl.etf.nba.persistence.dbutility.mysql.DBUtility;
+import org.unibl.etf.nba.persistence.model.dto.FranchiseDTO;
 import org.unibl.etf.nba.persistence.model.dto.PlayerDTO;
 import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 
@@ -173,6 +174,7 @@ public class MySQLPlayerDAO implements PlayerDAO {
 				DAOFactory factory = new MySQLDAOFactory();
 				CityDAO cityDAO = factory.getCityDAO();
 				retVal = new PlayerDTO(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDate(4), rs.getInt(5), rs.getInt(6), cityDAO.getCity(rs.getInt(7)));
+				retVal.setPositions(getPlayersPositions(retVal));
 			}
 
 		} catch (SQLException e) {
@@ -474,6 +476,199 @@ public class MySQLPlayerDAO implements PlayerDAO {
 			}
 		}
 		
+		return retVal;
+	}
+
+	@Override
+	public ArrayList<PlayerDTO> getPlayersWithTeam(SeasonDTO season) {
+		ArrayList<PlayerDTO> retVal = new ArrayList<>();
+		
+		String query = "SELECT * FROM player INNER JOIN plays_for USING(PlayerId) WHERE SeasonId = ?";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+
+		try {
+
+			conn = DBUtility.open();
+			ps = conn.prepareStatement(query);
+			ps.setInt(1, season.getSeasonId());
+			rs = ps.executeQuery();
+
+			while(rs.next()) {
+				DAOFactory factory = new MySQLDAOFactory();
+				CityDAO cityDAO = factory.getCityDAO();
+				PlayerDTO player = null;
+				player = new PlayerDTO(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDate(4), rs.getInt(5), rs.getInt(6), cityDAO.getCity(rs.getInt(7)));
+				player.setPositions(getPlayersPositions(player));
+				retVal.add(player);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public ArrayList<PlayerDTO> getRoster(FranchiseDTO franchise, SeasonDTO season) {
+		ArrayList<PlayerDTO> retVal = new ArrayList<>();
+		
+		String query = "SELECT * FROM player INNER JOIN plays_for USING(PlayerId) WHERE FranchiseId = ? AND SeasonId = ?";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+
+		try {
+
+			conn = DBUtility.open();
+			ps = conn.prepareStatement(query);
+			ps.setInt(1, franchise.getFranchiseId());
+			ps.setInt(2, season.getSeasonId());
+			rs = ps.executeQuery();
+
+			while(rs.next()) {
+				DAOFactory factory = new MySQLDAOFactory();
+				CityDAO cityDAO = factory.getCityDAO();
+				PlayerDTO player = null;
+				player = new PlayerDTO(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDate(4), rs.getInt(5), rs.getInt(6), cityDAO.getCity(rs.getInt(7)));
+				player.setPositions(getPlayersPositions(player));
+				retVal.add(player);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public boolean isPlayerOnRoster(PlayerDTO player, FranchiseDTO franchise, SeasonDTO season) {
+		boolean retVal = false;
+		
+		String query = "SELECT * FROM plays_for WHERE FranchiseId = ? AND SeasonId = ? AND PlayerId = ?";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+
+		try {
+
+			conn = DBUtility.open();
+			ps = conn.prepareStatement(query);
+			ps.setInt(1, franchise.getFranchiseId());
+			ps.setInt(2, season.getSeasonId());
+			ps.setInt(3, player.getId());
+			rs = ps.executeQuery();
+
+			if(rs.next()) {
+				retVal = true;
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public boolean addPlayerToRoster(PlayerDTO player, FranchiseDTO franchise, SeasonDTO season) {
+		boolean retVal = false;
+		
+		String query = "INSERT INTO plays_for VALUE(?, ?, ?)";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		
+		try {
+			
+			conn = DBUtility.open();
+			conn.setAutoCommit(false);
+			ps = conn.prepareStatement(query);
+			
+			ps.setInt(1, player.getId());
+			ps.setInt(2, franchise.getFranchiseId());
+			ps.setInt(3, season.getSeasonId());			
+			
+			retVal = ps.executeUpdate() == 1;
+			
+			if(retVal) {
+				conn.commit();
+			} else {
+				throw new SQLException("Rollback needed!");
+			}
+			
+		} catch(SQLException e) {
+			try {
+				conn.rollback();
+			} catch (SQLException ex) {
+				
+			}
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.setAutoCommit(true);
+			} catch(SQLException e) {
+				
+			}
+			DBUtility.close(conn, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public boolean removePlayerFromRoster(PlayerDTO player, FranchiseDTO franchise, SeasonDTO season) {
+		boolean retVal = false;
+
+		String query = "DELETE FROM plays_for WHERE FranchiseId = ? AND SeasonId = ? AND PlayerId = ?";
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+
+		try {
+
+			conn = DBUtility.open();
+			conn.setAutoCommit(false);
+			ps = conn.prepareStatement(query);
+
+			ps.setInt(1, franchise.getFranchiseId());
+			ps.setInt(2, season.getSeasonId());
+			ps.setInt(3, player.getId());
+
+			retVal = ps.executeUpdate() == 1;
+
+			if (retVal) {
+				conn.commit();
+			} else {
+				throw new SQLException("Rollback needed!");
+			}
+
+		} catch (SQLException e) {
+			try {
+				conn.rollback();
+			} catch (SQLException ex) {
+			}
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.setAutoCommit(true);
+			} catch (SQLException e) {
+			}
+			DBUtility.close(conn, ps);
+		}
+
 		return retVal;
 	}
 

@@ -1,9 +1,11 @@
 package org.unibl.etf.nba.persistence.model.dto;
 
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 
 public class SeasonDTO {
-	
+
 	private int seasonId;
 	private Date startDate;
 	private Date endDate;
@@ -152,6 +154,17 @@ public class SeasonDTO {
 		if (seasonId != other.seasonId)
 			return false;
 		return true;
+	}
+	
+	@Override
+	public String toString() {
+		Calendar calendar = new GregorianCalendar();
+		calendar.setTime(startDate);
+		String s = String.valueOf(calendar.get(Calendar.YEAR));
+		s += "/";
+		calendar.setTime(endDate);
+		s += calendar.get(Calendar.YEAR);
+		return s;
 	}
 
 }

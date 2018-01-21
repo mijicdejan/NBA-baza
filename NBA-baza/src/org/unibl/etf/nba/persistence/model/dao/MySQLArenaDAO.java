@@ -8,6 +8,8 @@ import java.util.ArrayList;
 
 import org.unibl.etf.nba.persistence.dbutility.mysql.DBUtility;
 import org.unibl.etf.nba.persistence.model.dto.ArenaDTO;
+import org.unibl.etf.nba.persistence.model.dto.FranchiseDTO;
+import org.unibl.etf.nba.persistence.model.dto.SeasonDTO;
 
 public class MySQLArenaDAO implements ArenaDAO {
 
@@ -110,6 +112,39 @@ public class MySQLArenaDAO implements ArenaDAO {
 				CityDAO cityDAO = factory.getCityDAO();
 				ArenaDTO arena = new ArenaDTO(rs.getInt(1), rs.getString(2), rs.getInt(3), cityDAO.getCity(rs.getInt(4)));
 				retVal.add(arena);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtility.close(conn, rs, ps);
+		}
+		
+		return retVal;
+	}
+
+	@Override
+	public ArenaDTO getArenaForFranchiseInSeason(FranchiseDTO franchise, SeasonDTO season) {
+		ArenaDTO retVal = null;
+		
+		String query = "SELECT ArenaId, Name, Capacity, CityId FROM arena INNER JOIN plays_in USING(ArenaId) WHERE FranchiseId = ? AND SeasonId = ?";
+		
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+
+		try {
+
+			conn = DBUtility.open();
+			ps = conn.prepareStatement(query);
+			ps.setInt(1, franchise.getFranchiseId());
+			ps.setInt(2, season.getSeasonId());
+			rs = ps.executeQuery();
+
+			if(rs.next()) {
+				DAOFactory factory = new MySQLDAOFactory();
+				CityDAO cityDAO = factory.getCityDAO();
+				retVal = new ArenaDTO(rs.getInt(1), rs.getString(2), rs.getInt(3), cityDAO.getCity(rs.getInt(4)));
 			}
 
 		} catch (SQLException e) {
